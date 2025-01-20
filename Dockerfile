@@ -1,15 +1,14 @@
-# Use an OpenJDK base image
+# Use a base image for the runtime environment (Java 17)
 FROM openjdk:17-jdk-slim
 
-# Set a working directory inside the container
+# Set the working directory inside the container
 WORKDIR /app
 
-# Copy the Spring Boot application JAR file to the container
-# Replace `gold-price-management.jar` with the name of your JAR file
+# Copy the pre-built .jar file from the host system (assuming it is in the target directory)
 COPY target/Gold_Price_Management-3.3.1.jar app.jar
 
-# Expose the application port (update this to your app's port if different)
+# Expose the application port (8080 is commonly used for Spring Boot applications)
 EXPOSE 8080
 
-# Command to run the application
+# Specify the command to run the application
 ENTRYPOINT ["java", "-jar", "app.jar"]
