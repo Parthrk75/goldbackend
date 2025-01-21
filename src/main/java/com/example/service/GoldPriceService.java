@@ -4,11 +4,11 @@ import com.example.dto.GoldCsvDTO;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
-import java.io.FileReader;
+import java.io.InputStreamReader;
 import java.io.Reader;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
@@ -20,8 +20,6 @@ import java.util.stream.Collectors;
 
 @Service
 public class GoldPriceService {
-
-    private static final String CSV_FILE_PATH = "src/main/resources/historical_gold_spot_prices.csv";
 
     private static final DateTimeFormatter FLEXIBLE_FORMATTER = new DateTimeFormatterBuilder()
             .appendOptional(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssXXX"))
@@ -44,14 +42,14 @@ public class GoldPriceService {
 
         System.out.println("Filtering entries between " + startDate + " and " + today); // Debug log
 
-        try (Reader reader = new FileReader(Paths.get(CSV_FILE_PATH).toFile())) {
+        try (Reader reader = new InputStreamReader(new ClassPathResource("historical_gold_spot_prices.csv").getInputStream())) {
             CSVParser csvParser = CSVFormat.DEFAULT
                     .withFirstRecordAsHeader()
                     .parse(reader);
 
             for (CSVRecord record : csvParser) {
                 try {
-                    String dateStr = record.get(0); // Date is in the first column
+                    String dateStr = record.get("Date"); // Use header name "Date"
                     if (dateStr == null || dateStr.isEmpty()) {
                         System.err.println("Skipping row with empty date: " + record);
                         continue; // Skip empty rows
@@ -60,12 +58,12 @@ public class GoldPriceService {
                     LocalDateTime date = LocalDateTime.parse(dateStr, FLEXIBLE_FORMATTER);
                     // Include entries that are between the start date and today (inclusive)
                     if (!date.isBefore(startDate) && !date.isAfter(today)) {
-                        String priceStr = record.get(record.size() - 1); // Get the last column value (price)
-                        if (priceStr != null && !priceStr.isEmpty()) {
-                            double price = Double.parseDouble(priceStr);
-                            goldPrices.add(new GoldCsvDTO(date, price));
+                        String closePriceStr = record.get("Close (Spot Price USD)"); // Use header name "Close (Spot Price USD)"
+                        if (closePriceStr != null && !closePriceStr.isEmpty()) {
+                            double closePrice = Double.parseDouble(closePriceStr);
+                            goldPrices.add(new GoldCsvDTO(date, closePrice));
                         } else {
-                            System.err.println("Skipping row with empty price: " + record);
+                            System.err.println("Skipping row with empty close price: " + record);
                         }
                     }
                 } catch (Exception e) {
@@ -83,7 +81,7 @@ public class GoldPriceService {
         }
 
         System.out.println("Total entries after filtering: " + goldPrices.size());
-        
+
         // Display the first and last entries in the filtered list
         if (!goldPrices.isEmpty()) {
             System.out.println("First entry: " + goldPrices.get(0));
