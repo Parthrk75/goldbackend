@@ -7,7 +7,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 public class GoldPriceSchedulerService {
@@ -16,37 +21,42 @@ public class GoldPriceSchedulerService {
     private final String apiUrl = "https://api.gold-api.com/price/XAU"; // Replace with the actual API endpoint
 
     private double livePrice; // Field to store the current price
-    private LocalDateTime updatedAt; // Field to store the last update time
+    private LocalDateTime updatedAt; // Field to store the last update time in UTC
+
+    // Thread pool for asynchronous tasks
+    private final ExecutorService executorService = Executors.newFixedThreadPool(3);
 
     public GoldPriceSchedulerService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
     /**
-     * Scheduled task to fetch the live gold price every 5 minutes.
+     * Scheduled task to fetch the live gold price every 5 minutes asynchronously.
      */
     @Scheduled(fixedRate = 300000) // 5 minutes in milliseconds
     public void updateLivePrice() {
-        try {
-            // Fetch the live price from the external API
-            ResponseEntity<String> response = restTemplate.getForEntity(apiUrl, String.class);
+        CompletableFuture.runAsync(() -> {
+            try {
+                // Fetch the live price from the external API
+                ResponseEntity<String> response = restTemplate.getForEntity(apiUrl, String.class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                // Parse the response body
-                String responseBody = response.getBody();
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    // Parse the response body
+                    String responseBody = response.getBody();
 
-                // Extract the price and updatedAt from the JSON response
-                livePrice = extractPrice(responseBody);
-                updatedAt = extractUpdatedAt(responseBody);
+                    // Extract the price and updatedAt from the JSON response
+                    livePrice = extractPrice(responseBody);
+                    updatedAt = extractUpdatedAt(responseBody);
 
-                System.out.println("Updated live gold price: " + livePrice + ", updatedAt: " + updatedAt);
-            } else {
-                System.err.println("Failed to update live gold price. Status: " + response.getStatusCode());
+                    System.out.println("Updated live gold price: " + livePrice + ", updatedAt: " + updatedAt);
+                } else {
+                    System.err.println("Failed to update live gold price. Status: " + response.getStatusCode());
+                }
+            } catch (Exception e) {
+                System.err.println("Error updating live gold price: " + e.getMessage());
+                e.printStackTrace();
             }
-        } catch (Exception e) {
-            System.err.println("Error updating live gold price: " + e.getMessage());
-            e.printStackTrace();
-        }
+        }, executorService);
     }
 
     /**
@@ -64,22 +74,51 @@ public class GoldPriceSchedulerService {
     private LocalDateTime extractUpdatedAt(String responseBody) {
         // Extract the updatedAt string from the response
         String updatedAtString = responseBody.split("\"updatedAt\":")[1].split("\"")[1];
-        
+
         // Use DateTimeFormatter.ISO_DATE_TIME to handle the 'Z' at the end of the timestamp
         DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
         return LocalDateTime.parse(updatedAtString, formatter); // Parse the string with the correct formatter
     }
 
     /**
-     * Get the latest live price and updatedAt timestamp.
+     * Converts the UTC timestamp to New York time.
      *
-     * @return a formatted string with the latest price and timestamp
+     * @param utcTime The UTC time to convert.
+     * @return The New York timestamp as a ZonedDateTime.
+     */
+    private ZonedDateTime convertToNewYorkTime(LocalDateTime utcTime) {
+        return utcTime.atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("America/New_York"));
+    }
+
+    /**
+     * Get the latest live price, updatedAt timestamp in UTC, and the New York time.
+     *
+     * @return a DTO containing the latest price and timestamps.
      */
     public LiveGoldPriceDTO getLivePriceDetails() {
-        if (updatedAt != null) {
-            return new LiveGoldPriceDTO(livePrice, updatedAt);
-        } else {
-            return null; // Return null if price or updatedAt are unavailable
+        CompletableFuture<LiveGoldPriceDTO> livePriceFuture = CompletableFuture.supplyAsync(() -> {
+            if (updatedAt != null) {
+                ZonedDateTime newYorkTime = convertToNewYorkTime(updatedAt);
+                return new LiveGoldPriceDTO(livePrice, updatedAt, newYorkTime);
+            } else {
+                return null;
+            }
+        }, executorService);
+
+        try {
+            // Wait for the result and return it
+            return livePriceFuture.get();
+        } catch (Exception e) {
+            System.err.println("Error fetching live gold price details: " + e.getMessage());
+            return null;
         }
+    }
+
+    /**
+     * Shutdown the thread pool when the application stops.
+     */
+    public void shutdownExecutor() {
+        executorService.shutdown();
+        System.out.println("Executor service shut down.");
     }
 }

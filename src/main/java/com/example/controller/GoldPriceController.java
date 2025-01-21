@@ -1,5 +1,6 @@
 package com.example.controller;
 
+import com.example.dto.GoldPriceDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,12 +10,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.service.GoldPriceCsvService;
-import com.example.service.GoldPriceDataService;
 import com.example.service.GoldPriceFetchService;
 import com.example.service.GoldPriceSchedulerService;
 import com.example.service.GoldPriceService;
 import com.example.dto.GoldCsvDTO;
-import com.example.dto.GoldPriceDTO;
 import com.example.dto.LiveGoldPriceDTO;
 
 import java.time.LocalDate;
@@ -23,7 +22,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5174")
+@CrossOrigin(origins = "http://localhost:5173")
 public class GoldPriceController {
 
     @Autowired
@@ -33,26 +32,10 @@ public class GoldPriceController {
     private GoldPriceCsvService goldPriceCsvService;
 
     @Autowired
-    private GoldPriceDataService goldPriceDataService;
-
-    @Autowired
     private GoldPriceSchedulerService goldPriceSchedulerService;
 
     @Autowired
     private GoldPriceService goldPriceService;
-    
-    
-
-    /**
-     * API to fetch gold price data for the specified number of days.
-     * Endpoint: /gold-price-data
-     * @param days Number of days for which to fetch data.
-     * @return List of gold price data.
-     */
-    @GetMapping("/gold-price-data")
-    public List<GoldPriceDataService.GoldPriceData> fetchGoldPriceData(@RequestParam int days) {
-        return goldPriceDataService.getGoldPriceData(days);
-    }
 
     /**
      * API to append the latest gold price to a CSV file.
@@ -88,7 +71,6 @@ public class GoldPriceController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Historical data not available.");
         }
     }
-
 
     /**
      * API to fetch gold price entries based on the specified number of days.
@@ -149,4 +131,3 @@ public class GoldPriceController {
     }
 
 }
- 
