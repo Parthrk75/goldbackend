@@ -6,10 +6,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.text.SimpleDateFormat;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.TimeZone;
 
 @Service
 public class GoldPriceFetchService {
@@ -34,6 +35,10 @@ public class GoldPriceFetchService {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 GoldPriceDTO goldPrice = response.getBody();
                 goldPrice.setTimestamp(LocalDateTime.now()); // Add a timestamp if not provided by the API
+
+                // Convert the timestamp to New York time zone
+                convertTimestampToTimeZone(goldPrice, "America/New_York");
+
                 synchronized (historicalData) {
                     historicalData.add(goldPrice);
                 }
@@ -79,5 +84,28 @@ public class GoldPriceFetchService {
 
     public List<GoldPriceDTO> getHistoricalData() {
         return historicalData;
+    }
+
+    /**
+     * Convert the timestamp of the GoldPriceDTO to the specified time zone.
+     */
+    private void convertTimestampToTimeZone(GoldPriceDTO goldPrice, String timeZoneId) {
+        try {
+            // Convert LocalDateTime to ZonedDateTime in UTC (or the original time zone)
+            ZoneId sourceZoneId = ZoneId.of("UTC"); // Assuming the timestamp is in UTC
+            ZonedDateTime sourceZonedDateTime = goldPrice.getTimestamp().atZone(sourceZoneId);
+
+            // Convert the time to the target time zone
+            ZoneId targetZoneId = ZoneId.of(timeZoneId);
+            ZonedDateTime targetZonedDateTime = sourceZonedDateTime.withZoneSameInstant(targetZoneId);
+
+            // Set the timestamp back to the GoldPriceDTO in the new time zone
+            goldPrice.setTimestamp(targetZonedDateTime.toLocalDateTime());
+
+            // Print the converted timestamp for logging purposes
+            System.out.println("Converted Timestamp: " + targetZonedDateTime);
+        } catch (Exception e) {
+            System.err.println("Error during time zone conversion: " + e.getMessage());
+        }
     }
 }
