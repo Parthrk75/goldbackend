@@ -72,6 +72,7 @@ public class GoldPriceController {
         }
     }
 
+
     /**
      * API to fetch gold price entries based on the specified number of days.
      * Endpoint: /gold-price-entries
