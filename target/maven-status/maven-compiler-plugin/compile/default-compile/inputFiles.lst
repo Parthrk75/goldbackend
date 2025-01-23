@@ -8,6 +8,7 @@ C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\dto\GoldPr
 C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\dto\LiveGoldPriceDTO.java
 C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\dto\package-info.java
 C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\GoldPriceManagementApplication.java
+C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\service\CsvReaderService.java
 C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\service\GoldPriceCsvService.java
 C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\service\GoldPriceDataService.java
 C:\Users\Admin\Documents\GitHub\goldbackend\src\main\java\com\example\service\GoldPriceFetchService.java

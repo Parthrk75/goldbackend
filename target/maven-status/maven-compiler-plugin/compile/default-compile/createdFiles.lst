@@ -17,3 +17,4 @@ com\example\controller\GoldPriceController.class
 com\example\service\GoldPriceDataService.class
 com\example\dto\GoldPriceDTO.class
 com\example\service\GoldPriceDataService$GoldPriceData.class
+com\example\service\CsvReaderService.class

@@ -1,6 +1,7 @@
 package com.example.controller;
 
 import com.example.dto.GoldPriceDTO;
+import com.example.service.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -9,10 +10,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.service.GoldPriceCsvService;
-import com.example.service.GoldPriceFetchService;
-import com.example.service.GoldPriceSchedulerService;
-import com.example.service.GoldPriceService;
 import com.example.dto.GoldCsvDTO;
 import com.example.dto.LiveGoldPriceDTO;
 
@@ -37,6 +34,8 @@ public class GoldPriceController {
     @Autowired
     private GoldPriceService goldPriceService;
 
+    @Autowired
+    private CsvReaderService csvReaderService;
     /**
      * API to append the latest gold price to a CSV file.
      * Endpoint: /append
@@ -131,4 +130,8 @@ public class GoldPriceController {
         }
     }
 
+    @GetMapping("/last-entries")
+    public void getLastSevenEntries() {
+        csvReaderService.logLastSevenEntries();
+    }
 }
