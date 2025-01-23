@@ -131,7 +131,8 @@ public class GoldPriceController {
     }
 
     @GetMapping("/last-entries")
-    public void getLastSevenEntries() {
+    public String getLastSevenEntries() {
         csvReaderService.logLastSevenEntries();
+        return "Last 7 entries have been logged successfully. Check server logs for details.";
     }
 }

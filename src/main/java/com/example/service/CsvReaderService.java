@@ -14,8 +14,11 @@ import java.util.LinkedList;
 public class CsvReaderService {
 
     private static final Logger logger = LoggerFactory.getLogger(CsvReaderService.class);
-    private static final String CSV_FILE_PATH = "/var/data/historical_gold_spot_prices.csv"; // Adjust the path if needed
+    private static final String CSV_FILE_PATH = "/var/data/historical_gold_spot_prices.csv"; // Adjust path if needed
 
+    /**
+     * Logs the last 7 entries from the CSV file.
+     */
     public void logLastSevenEntries() {
         LinkedList<String> lastSevenLines = new LinkedList<>();
 
