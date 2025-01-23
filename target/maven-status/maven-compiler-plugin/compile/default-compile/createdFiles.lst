@@ -6,7 +6,9 @@ com\example\service\GoldPriceFetchService.class
 com\example\service\GoldPriceSchedulerService.class
 com\example\controller\package-info.class
 com\example\service\GoldPriceResponse.class
+com\example\config\WebConfig.class
 com\example\dto\package-info.class
+com\example\config\WebConfig$1.class
 com\example\dto\LiveGoldPriceDTO.class
 com\example\service\GoldPriceCsvService.class
 com\example\config\AppConfig.class
