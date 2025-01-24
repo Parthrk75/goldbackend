@@ -131,8 +131,16 @@ public class GoldPriceController {
     }
 
     @GetMapping("/last-entries")
-    public String getLastSevenEntries() {
-        csvReaderService.logLastSevenEntries();
-        return "Last 7 entries have been logged successfully. Check server logs for details.";
+    public String getLastEntries(@RequestParam(defaultValue = "7") int numEntries) {
+        // Ensure the number of entries is positive
+        if (numEntries <= 0) {
+            return "Invalid number of entries specified. Please provide a positive number.";
+        }
+
+        // Call the service method to log the last 'numEntries' entries
+        csvReaderService.logLastNEntries(numEntries);
+
+        return String.format("Last %d entries have been logged successfully. Check server logs for details.", numEntries);
     }
+
 }

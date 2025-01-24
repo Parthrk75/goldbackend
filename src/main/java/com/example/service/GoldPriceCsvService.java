@@ -1,7 +1,9 @@
 package com.example.service;
 
 import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
+import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
@@ -14,8 +16,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
 public class GoldPriceCsvService {
@@ -24,6 +28,8 @@ public class GoldPriceCsvService {
     private static final String API_URL = "https://api.gold-api.com/price/XAU"; // Replace with actual API URL
     private static final String CSV_FILE_NAME = "historical_gold_spot_prices.csv"; // File in classpath
     private static final String WRITABLE_CSV_FILE = "/var/data/historical_gold_spot_prices.csv"; // Writable location
+    private static final DateTimeFormatter INPUT_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
+    private static final DateTimeFormatter OUTPUT_FORMAT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
     private final RestTemplate restTemplate;
 
@@ -38,19 +44,13 @@ public class GoldPriceCsvService {
         try {
             Path writablePath = Path.of(WRITABLE_CSV_FILE);
 
-            // Check if the writable file already exists
             if (Files.exists(writablePath)) {
                 logger.debug("Writable CSV file already exists at: {}", writablePath);
                 return; // No need to copy again
             }
 
-            // Load the CSV file from resources
             ClassPathResource resource = new ClassPathResource(CSV_FILE_NAME);
-
-            // Ensure the writable directory exists
             Files.createDirectories(writablePath.getParent());
-
-            // Copy the CSV file from resources to writable location
             try (InputStream inputStream = resource.getInputStream()) {
                 Files.copy(inputStream, writablePath);
                 logger.info("CSV file successfully copied to writable location: {}", writablePath);
@@ -62,7 +62,49 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Appends the current gold price to the writable CSV file using the New York time zone.
+     * Reformat the dates in the CSV file to match the desired format: dd-MM-yyyy HH:mm
+     */
+    public void reformatCsvDates() {
+        ensureWritableCsvFile();
+
+        try {
+            Path writablePath = Path.of(WRITABLE_CSV_FILE);
+            List<CSVRecord> records;
+
+            // Read existing data from the CSV
+            try (BufferedReader reader = Files.newBufferedReader(writablePath, StandardCharsets.UTF_8);
+                 CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT)) {
+                records = parser.getRecords();
+            }
+
+            // Reformat and write the updated data
+            try (BufferedWriter writer = Files.newBufferedWriter(writablePath, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
+                 CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withRecordSeparator("\n"))) {
+
+                for (CSVRecord record : records) {
+                    String rawDate = record.get(0);
+                    String formattedDate;
+                    try {
+                        LocalDateTime dateTime = ZonedDateTime.parse(rawDate, INPUT_FORMAT).toLocalDateTime();
+                        formattedDate = dateTime.format(OUTPUT_FORMAT);
+                    } catch (Exception e) {
+                        logger.warn("Skipping invalid date format: {}", rawDate);
+                        formattedDate = rawDate; // Retain the original if parsing fails
+                    }
+
+                    // Reprint the record with formatted date
+                    printer.printRecord(formattedDate, record.get(1), record.get(2), record.get(3), record.get(4));
+                }
+            }
+
+            logger.info("Successfully reformatted dates in the CSV file.");
+        } catch (Exception e) {
+            logger.error("Error while reformatting dates in the CSV file: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Appends the current gold price to the writable CSV file using the formatted date.
      *
      * @return a message indicating success or failure.
      */
@@ -70,9 +112,8 @@ public class GoldPriceCsvService {
         logger.debug("Starting to append gold price to the CSV file...");
 
         try {
-            ensureWritableCsvFile(); // Ensure the file is available for appending
+            ensureWritableCsvFile();
 
-            // Fetch the live gold price from the API
             logger.debug("Fetching live gold price from API: {}", API_URL);
             GoldPriceResponse response = restTemplate.getForObject(API_URL, GoldPriceResponse.class);
 
@@ -84,19 +125,16 @@ public class GoldPriceCsvService {
             double goldPrice = response.getPrice();
             logger.info("Fetched gold price: {}", goldPrice);
 
-            // Get the current date and time in the New York time zone
-            ZonedDateTime newYorkTime = ZonedDateTime.now(java.time.ZoneId.of("America/New_York"));
-            String formattedNewYorkTime = newYorkTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z"));
-            logger.debug("New York time for the record: {}", formattedNewYorkTime);
+            LocalDateTime now = ZonedDateTime.now(java.time.ZoneId.of("America/New_York")).toLocalDateTime();
+            String formattedDate = now.format(OUTPUT_FORMAT);
 
-            // Append the new record to the writable CSV file
             try (BufferedWriter writer = Files.newBufferedWriter(
                     Path.of(WRITABLE_CSV_FILE),
                     StandardOpenOption.CREATE,
                     StandardOpenOption.APPEND);
                  CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withRecordSeparator("\n"))) {
 
-                csvPrinter.printRecord(formattedNewYorkTime, "0", "0", "0", String.valueOf(goldPrice));
+                csvPrinter.printRecord(formattedDate, "0", "0", "0", String.valueOf(goldPrice));
                 logger.info("Gold price appended successfully to the CSV file.");
             }
 
@@ -105,15 +143,5 @@ public class GoldPriceCsvService {
             logger.error("Error while appending gold price to the CSV file: {}", e.getMessage(), e);
             return "Error while appending gold price: " + e.getMessage();
         }
-    }
-
-    /**
-     * Scheduled task to append gold price to CSV at 11:00 PM New York time.
-     */
-    @Scheduled(cron = "0 0 23 * * ?", zone = "America/New_York") // Every day at 11:00 PM New York time
-    public void appendGoldPriceAt11PM() {
-        logger.info("Scheduled task triggered to append gold price at 11 PM New York time.");
-        String result = appendGoldPriceToCsv();
-        logger.info("Scheduled Task Result: {}", result);
     }
 }

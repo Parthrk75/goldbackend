@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 
@@ -17,23 +18,33 @@ public class CsvReaderService {
     private static final String CSV_FILE_PATH = "/var/data/historical_gold_spot_prices.csv"; // Adjust path if needed
 
     /**
-     * Logs the last 7 entries from the CSV file.
+     * Logs the last 'n' entries from the CSV file.
      */
-    public void logLastSevenEntries() {
-        LinkedList<String> lastSevenLines = new LinkedList<>();
+    public void logLastNEntries(int numEntries) {
+        if (numEntries <= 0) {
+            logger.error("Invalid number of entries specified: {}. Must be greater than zero.", numEntries);
+            return;
+        }
 
-        try (BufferedReader reader = new BufferedReader(new FileReader(Paths.get(CSV_FILE_PATH).toFile()))) {
+        LinkedList<String> allLines = new LinkedList<>();
+        Path csvPath = Paths.get(CSV_FILE_PATH);
+
+        // Log the absolute path being used
+        logger.info("Attempting to read CSV file from path: {}", csvPath.toAbsolutePath());
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvPath.toFile()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                // Maintain only the last 7 lines in the list
-                if (lastSevenLines.size() == 7) {
-                    lastSevenLines.removeFirst();
-                }
-                lastSevenLines.add(line);
+                // Collect all lines from the CSV file
+                allLines.add(line);
             }
 
-            logger.info("Last 7 entries from the CSV file:");
-            lastSevenLines.forEach(logger::info);
+            // Get the last 'numEntries' lines
+            int startIndex = Math.max(allLines.size() - numEntries, 0);
+            LinkedList<String> lastNLines = new LinkedList<>(allLines.subList(startIndex, allLines.size()));
+
+            logger.info("Last {} entries from the CSV file:", numEntries);
+            lastNLines.forEach(logger::info);
         } catch (IOException e) {
             logger.error("Error reading the CSV file: {}", e.getMessage(), e);
         }

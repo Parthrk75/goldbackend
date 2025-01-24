@@ -8,6 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -30,14 +31,15 @@ public class GoldPriceFetchService {
     }
 
     /**
-     * Fetch gold price every 2 minutes.
+     * Fetch gold price every 1 hour at 2 minutes past the hour.
      */
-    @Scheduled(fixedRate = 120000) // Every 2 minutes
+    @Scheduled(fixedRate = 3600000) // Every hour at HH:02
     public void fetchGoldPrice() {
         try {
             System.out.println("[DEBUG] Starting fetchGoldPrice...");
             logger.info("Fetching gold price from API: {}", apiUrl);
             ResponseEntity<GoldPriceDTO> response = restTemplate.getForEntity(apiUrl, GoldPriceDTO.class);
+
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 System.out.println("[DEBUG] API response received successfully.");
                 GoldPriceDTO goldPrice = response.getBody();
@@ -61,12 +63,6 @@ public class GoldPriceFetchService {
                 historicalData.add(goldPrice);
 
                 System.out.println("[DEBUG] Live price updated and added to historical data.");
-
-                // Limit historical data to the latest 24 entries
-                if (historicalData.size() > 24) {
-                    historicalData.remove(0);
-                    System.out.println("[DEBUG] Removed oldest entry from historical data. Current size: " + historicalData.size());
-                }
             } else {
                 logger.error("Failed to fetch gold price. Status: {}", response.getStatusCode());
                 System.out.println("[ERROR] Failed to fetch gold price. Status: " + response.getStatusCode());
@@ -75,6 +71,16 @@ public class GoldPriceFetchService {
             logger.error("Error fetching gold price: {}", e.getMessage());
             System.out.println("[ERROR] Exception while fetching gold price: " + e.getMessage());
         }
+    }
+
+    /**
+     * Clear historical data at 00:00 New York time daily.
+     */
+    @Scheduled(cron = "0 0 0 * * *", zone = "America/New_York") // Every day at 00:00 New York time
+    public void clearHistoricalDataAtMidnight() {
+        System.out.println("[DEBUG] Clearing historical data at 00:00 New York time...");
+        logger.info("Clearing historical data at 00:00 New York time...");
+        historicalData.clear();
     }
 
     /**
