@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.LinkedList;
+import java.util.List;
 
 @Service
 public class CsvReaderService {
@@ -18,35 +19,36 @@ public class CsvReaderService {
     private static final String CSV_FILE_PATH = "/var/data/historical_gold_spot_prices.csv"; // Adjust path if needed
 
     /**
-     * Logs the last 'n' entries from the CSV file.
+     * Fetches the last 'n' entries from the CSV file and logs them.
+     *
+     * @param numEntries Number of entries to fetch.
+     * @return List of the last 'n' lines from the CSV file.
      */
-    public void logLastNEntries(int numEntries) {
-        if (numEntries <= 0) {
-            logger.error("Invalid number of entries specified: {}. Must be greater than zero.", numEntries);
-            return;
-        }
-
+    public List<String> getLastNEntries(int numEntries) {
         LinkedList<String> allLines = new LinkedList<>();
         Path csvPath = Paths.get(CSV_FILE_PATH);
 
-        // Log the absolute path being used
         logger.info("Attempting to read CSV file from path: {}", csvPath.toAbsolutePath());
 
         try (BufferedReader reader = new BufferedReader(new FileReader(csvPath.toFile()))) {
             String line;
             while ((line = reader.readLine()) != null) {
-                // Collect all lines from the CSV file
                 allLines.add(line);
             }
 
-            // Get the last 'numEntries' lines
+            // Calculate the last 'n' entries
             int startIndex = Math.max(allLines.size() - numEntries, 0);
-            LinkedList<String> lastNLines = new LinkedList<>(allLines.subList(startIndex, allLines.size()));
+            List<String> lastNLines = allLines.subList(startIndex, allLines.size());
 
+            // Log the entries to the terminal
             logger.info("Last {} entries from the CSV file:", numEntries);
             lastNLines.forEach(logger::info);
+
+            return lastNLines;
         } catch (IOException e) {
             logger.error("Error reading the CSV file: {}", e.getMessage(), e);
         }
+
+        return List.of(); // Return an empty list if an error occurs
     }
 }

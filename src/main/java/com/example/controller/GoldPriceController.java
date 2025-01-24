@@ -131,16 +131,19 @@ public class GoldPriceController {
     }
 
     @GetMapping("/last-entries")
-    public String getLastEntries(@RequestParam(defaultValue = "7") int numEntries) {
-        // Ensure the number of entries is positive
+    public ResponseEntity<?> getLastEntries(@RequestParam(defaultValue = "7") int numEntries) {
         if (numEntries <= 0) {
-            return "Invalid number of entries specified. Please provide a positive number.";
+            return ResponseEntity.badRequest().body("Invalid number of entries specified. Please provide a positive number.");
         }
 
-        // Call the service method to log the last 'numEntries' entries
-        csvReaderService.logLastNEntries(numEntries);
+        // Fetch the last 'numEntries' from the service
+        List<String> lastEntries = csvReaderService.getLastNEntries(numEntries);
 
-        return String.format("Last %d entries have been logged successfully. Check server logs for details.", numEntries);
+        if (lastEntries.isEmpty()) {
+            return ResponseEntity.status(500).body("Unable to fetch entries. Please check the logs for details.");
+        }
+
+        return ResponseEntity.ok(lastEntries); // Return the list as JSON response
     }
 
 }
