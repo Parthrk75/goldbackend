@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.example.GoldPriceManagementApplicationTests
 -------------------------------------------------------------------------------
-Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.508 s -- in com.example.GoldPriceManagementApplicationTests
+Tests run: 2, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.622 s -- in com.example.GoldPriceManagementApplicationTests

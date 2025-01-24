@@ -19,7 +19,13 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+@CrossOrigin(origins = {
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "https://goldfrontend.vercel.app"
+})
+
 public class GoldPriceController {
 
     @Autowired
