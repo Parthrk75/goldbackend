@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.dto.GoldCsvDTO;
 import com.example.dto.LiveGoldPriceDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -48,8 +50,19 @@ public class GoldPriceController {
      * @return Status message of the operation.
      */
     @GetMapping("/append")
-    public String appendGoldPriceToCsv() {
-        return goldPriceCsvService.appendGoldPriceToCsv();
+    public ResponseEntity<String> appendGoldPriceToCsv() {
+        try {
+            String result = goldPriceCsvService.appendGoldPriceToCsv();
+            return ResponseEntity.ok(result); // Return 200 OK with result
+        } catch (Exception e) {
+            // Log the error
+            Logger logger = LoggerFactory.getLogger(GoldPriceController.class);
+            logger.error("Error occurred while appending gold price to CSV: {}", e.getMessage(), e);
+
+            // Return 500 Internal Server Error with error message
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error occurred while appending gold price: " + e.getMessage());
+        }
     }
 
     /**

@@ -144,4 +144,14 @@ public class GoldPriceCsvService {
             return "Error while appending gold price: " + e.getMessage();
         }
     }
+
+    /**
+     * Scheduler to run appendGoldPriceToCsv at 00:05 New York time daily.
+     */
+    @Scheduled(cron = "0 5 0 * * ?", zone = "America/New_York")
+    public void scheduledAppendGoldPrice() {
+        logger.info("Running scheduled task to append gold price...");
+        String result = appendGoldPriceToCsv();
+        logger.info("Scheduled task result: {}", result);
+    }
 }
