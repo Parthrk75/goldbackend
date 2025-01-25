@@ -38,23 +38,26 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Ensures that the CSV file is available at a writable location.
+     * Ensures that the CSV file is available at a writable location and copies it from the classpath if necessary.
      */
     private void ensureWritableCsvFile() {
         try {
             Path writablePath = Path.of(WRITABLE_CSV_FILE);
 
+            // If file already exists, no need to copy again.
             if (Files.exists(writablePath)) {
                 logger.debug("Writable CSV file already exists at: {}", writablePath);
-                return; // No need to copy again
+                return;
             }
 
             ClassPathResource resource = new ClassPathResource(CSV_FILE_NAME);
             Files.createDirectories(writablePath.getParent());
+
             try (InputStream inputStream = resource.getInputStream()) {
                 Files.copy(inputStream, writablePath);
                 logger.info("CSV file successfully copied to writable location: {}", writablePath);
             }
+
         } catch (Exception e) {
             logger.error("Failed to copy the CSV file to writable location: {}", e.getMessage(), e);
             throw new RuntimeException("Error ensuring writable CSV file", e);
@@ -75,6 +78,7 @@ public class GoldPriceCsvService {
             try (BufferedReader reader = Files.newBufferedReader(writablePath, StandardCharsets.UTF_8);
                  CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT)) {
                 records = parser.getRecords();
+                logger.debug("Read {} records from the CSV file.", records.size());
             }
 
             // Reformat and write the updated data
@@ -146,12 +150,33 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Scheduler to run appendGoldPriceToCsv at 00:05 New York time daily.
+     * Scheduler to run appendGoldPriceToCsv at 00:20 New York time daily.
      */
-    @Scheduled(cron = "0 5 0 * * ?", zone = "America/New_York")
+    @Scheduled(cron = "0 20 0 * * ?", zone = "America/New_York")
     public void scheduledAppendGoldPrice() {
         logger.info("Running scheduled task to append gold price...");
         String result = appendGoldPriceToCsv();
         logger.info("Scheduled task result: {}", result);
+    }
+
+    /**
+     * This method ensures the CSV file is always accessible for reading and appending without any overwrite risk.
+     * Will trigger once when the server starts.
+     */
+
+    @Scheduled(cron = "0 20 0 * * ?", zone = "America/New_York") // Run every day at 00:20 New York time
+    public void checkCsvFile() {
+        logger.info("Checking CSV file before appending data...");
+
+        // Ensure the CSV file is available and not corrupted or missing.
+        ensureWritableCsvFile();
+
+        // Log if file is successfully found or not.
+        Path writablePath = Path.of(WRITABLE_CSV_FILE);
+        if (Files.exists(writablePath)) {
+            logger.info("CSV file found and ready for appending.");
+        } else {
+            logger.error("CSV file not found or is corrupted!");
+        }
     }
 }
