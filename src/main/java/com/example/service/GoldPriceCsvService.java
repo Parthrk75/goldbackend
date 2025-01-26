@@ -1,21 +1,16 @@
 package com.example.service;
 
 import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVPrinter;
-import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -26,98 +21,58 @@ public class GoldPriceCsvService {
 
     private static final Logger logger = LoggerFactory.getLogger(GoldPriceCsvService.class);
     private static final String API_URL = "https://api.gold-api.com/price/XAU"; // Replace with actual API URL
-    private static final String CSV_FILE_NAME = "historical_gold_spot_prices.csv"; // File in classpath
-    private static final String WRITABLE_CSV_FILE = "/var/data/historical_gold_spot_prices.csv"; // Writable location
-    private static final DateTimeFormatter INPUT_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z");
     private static final DateTimeFormatter OUTPUT_FORMAT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+
+    // Define the CSV file path within the project folder (e.g., "data" folder)
+    private static final Path CSV_FILE_PATH = Paths.get("data", "historical_gold_spot_prices.csv");
 
     private final RestTemplate restTemplate;
 
     public GoldPriceCsvService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
+        ensureCsvFileExists();
     }
 
     /**
-     * Ensures that the CSV file is available at a writable location and copies it from the classpath if necessary.
+     * Ensures that the CSV file exists and is accessible.
+     * Creates the file if it does not already exist.
      */
-    private void ensureWritableCsvFile() {
+    private void ensureCsvFileExists() {
         try {
-            Path writablePath = Path.of(WRITABLE_CSV_FILE);
-
-            // If file already exists, no need to copy again.
-            if (Files.exists(writablePath)) {
-                logger.debug("Writable CSV file already exists at: {}", writablePath);
-                return;
+            // Create directories if they don't exist
+            if (Files.notExists(CSV_FILE_PATH.getParent())) {
+                Files.createDirectories(CSV_FILE_PATH.getParent()); // Create parent directories if needed
+                logger.info("Created directories: {}", CSV_FILE_PATH.getParent());
             }
 
-            ClassPathResource resource = new ClassPathResource(CSV_FILE_NAME);
-            Files.createDirectories(writablePath.getParent());
+            // Create the CSV file if it doesn't exist
+            if (Files.notExists(CSV_FILE_PATH)) {
+                Files.createFile(CSV_FILE_PATH); // Create the CSV file
+                logger.info("CSV file created at: {}", CSV_FILE_PATH.toAbsolutePath());
 
-            try (InputStream inputStream = resource.getInputStream()) {
-                Files.copy(inputStream, writablePath);
-                logger.info("CSV file successfully copied to writable location: {}", writablePath);
-            }
-
-        } catch (Exception e) {
-            logger.error("Failed to copy the CSV file to writable location: {}", e.getMessage(), e);
-            throw new RuntimeException("Error ensuring writable CSV file", e);
-        }
-    }
-
-    /**
-     * Reformat the dates in the CSV file to match the desired format: dd-MM-yyyy HH:mm
-     */
-    public void reformatCsvDates() {
-        ensureWritableCsvFile();
-
-        try {
-            Path writablePath = Path.of(WRITABLE_CSV_FILE);
-            List<CSVRecord> records;
-
-            // Read existing data from the CSV
-            try (BufferedReader reader = Files.newBufferedReader(writablePath, StandardCharsets.UTF_8);
-                 CSVParser parser = new CSVParser(reader, CSVFormat.DEFAULT)) {
-                records = parser.getRecords();
-                logger.debug("Read {} records from the CSV file.", records.size());
-            }
-
-            // Reformat and write the updated data
-            try (BufferedWriter writer = Files.newBufferedWriter(writablePath, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING);
-                 CSVPrinter printer = new CSVPrinter(writer, CSVFormat.DEFAULT.withRecordSeparator("\n"))) {
-
-                for (CSVRecord record : records) {
-                    String rawDate = record.get(0);
-                    String formattedDate;
-                    try {
-                        LocalDateTime dateTime = ZonedDateTime.parse(rawDate, INPUT_FORMAT).toLocalDateTime();
-                        formattedDate = dateTime.format(OUTPUT_FORMAT);
-                    } catch (Exception e) {
-                        logger.warn("Skipping invalid date format: {}", rawDate);
-                        formattedDate = rawDate; // Retain the original if parsing fails
-                    }
-
-                    // Reprint the record with formatted date
-                    printer.printRecord(formattedDate, record.get(1), record.get(2), record.get(3), record.get(4));
+                // Optionally write headers to the file if it's newly created
+                try (BufferedWriter writer = new BufferedWriter(new FileWriter(CSV_FILE_PATH.toFile(), true));
+                     CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("Date", "Open", "High", "Low", "Close"))) {
+                    logger.info("Headers written to new CSV file.");
                 }
+            } else {
+                logger.info("CSV file already exists at: {}", CSV_FILE_PATH.toAbsolutePath());
             }
-
-            logger.info("Successfully reformatted dates in the CSV file.");
-        } catch (Exception e) {
-            logger.error("Error while reformatting dates in the CSV file: {}", e.getMessage(), e);
+        } catch (IOException e) {
+            logger.error("Failed to ensure CSV file existence: {}", e.getMessage(), e);
+            throw new RuntimeException("Error ensuring CSV file existence", e);
         }
     }
 
     /**
-     * Appends the current gold price to the writable CSV file using the formatted date.
+     * Appends the current gold price to the original CSV file.
      *
-     * @return a message indicating success or failure.
+     * @return A message indicating success or failure.
      */
     public String appendGoldPriceToCsv() {
         logger.debug("Starting to append gold price to the CSV file...");
 
         try {
-            ensureWritableCsvFile();
-
             logger.debug("Fetching live gold price from API: {}", API_URL);
             GoldPriceResponse response = restTemplate.getForObject(API_URL, GoldPriceResponse.class);
 
@@ -132,10 +87,8 @@ public class GoldPriceCsvService {
             LocalDateTime now = ZonedDateTime.now(java.time.ZoneId.of("America/New_York")).toLocalDateTime();
             String formattedDate = now.format(OUTPUT_FORMAT);
 
-            try (BufferedWriter writer = Files.newBufferedWriter(
-                    Path.of(WRITABLE_CSV_FILE),
-                    StandardOpenOption.CREATE,
-                    StandardOpenOption.APPEND);
+            // Append data to the CSV file
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(CSV_FILE_PATH.toFile(), true));
                  CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withRecordSeparator("\n"))) {
 
                 csvPrinter.printRecord(formattedDate, "0", "0", "0", String.valueOf(goldPrice));
@@ -150,33 +103,16 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Scheduler to run appendGoldPriceToCsv at 00:20 New York time daily.
+     * Reads the contents of the original CSV file.
+     *
+     * @return The contents of the CSV file as a List of Strings.
      */
-    @Scheduled(cron = "0 20 0 * * ?", zone = "America/New_York")
-    public void scheduledAppendGoldPrice() {
-        logger.info("Running scheduled task to append gold price...");
-        String result = appendGoldPriceToCsv();
-        logger.info("Scheduled task result: {}", result);
-    }
-
-    /**
-     * This method ensures the CSV file is always accessible for reading and appending without any overwrite risk.
-     * Will trigger once when the server starts.
-     */
-
-    @Scheduled(cron = "0 20 0 * * ?", zone = "America/New_York") // Run every day at 00:20 New York time
-    public void checkCsvFile() {
-        logger.info("Checking CSV file before appending data...");
-
-        // Ensure the CSV file is available and not corrupted or missing.
-        ensureWritableCsvFile();
-
-        // Log if file is successfully found or not.
-        Path writablePath = Path.of(WRITABLE_CSV_FILE);
-        if (Files.exists(writablePath)) {
-            logger.info("CSV file found and ready for appending.");
-        } else {
-            logger.error("CSV file not found or is corrupted!");
+    public List<String> readCsvFile() {
+        try {
+            return Files.readAllLines(CSV_FILE_PATH);
+        } catch (IOException e) {
+            logger.error("Error reading the CSV file: {}", e.getMessage(), e);
+            return List.of(); // Return empty list on error
         }
     }
 }

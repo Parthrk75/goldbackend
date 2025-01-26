@@ -2,6 +2,7 @@ package com.example.controller;
 
 import com.example.dto.GoldPriceDTO;
 import com.example.service.*;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @CrossOrigin(origins = {
@@ -51,12 +53,20 @@ public class GoldPriceController {
      */
     @GetMapping("/append")
     public ResponseEntity<String> appendGoldPriceToCsv() {
+        // Create a logger instance for this method
+        Logger logger = LoggerFactory.getLogger(GoldPriceController.class);
+
         try {
+            // Call the service method to append the gold price to the CSV file
             String result = goldPriceCsvService.appendGoldPriceToCsv();
-            return ResponseEntity.ok(result); // Return 200 OK with result
+
+            // Log the success
+            logger.info("Successfully appended gold price to CSV.");
+
+            // Return 200 OK with the result
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
-            // Log the error
-            Logger logger = LoggerFactory.getLogger(GoldPriceController.class);
+            // Log the error with detailed exception message
             logger.error("Error occurred while appending gold price to CSV: {}", e.getMessage(), e);
 
             // Return 500 Internal Server Error with error message
@@ -151,18 +161,22 @@ public class GoldPriceController {
 
     @GetMapping("/last-entries")
     public ResponseEntity<?> getLastEntries(@RequestParam(defaultValue = "7") int numEntries) {
+        // Check if the number of entries is positive
         if (numEntries <= 0) {
-            return ResponseEntity.badRequest().body("Invalid number of entries specified. Please provide a positive number.");
+            // Returning a structured error response
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid number of entries specified. Please provide a positive number."));
         }
 
         // Fetch the last 'numEntries' from the service
-        List<String> lastEntries = csvReaderService.getLastNEntries(numEntries);
+        List<ObjectNode> lastEntries = csvReaderService.getLastNEntries(numEntries);
 
+        // Handle the case where no entries were found
         if (lastEntries.isEmpty()) {
-            return ResponseEntity.status(500).body("Unable to fetch entries. Please check the logs for details.");
+            return ResponseEntity.status(404).body(Map.of("message", "No entries found for the requested number."));
         }
 
-        return ResponseEntity.ok(lastEntries); // Return the list as JSON response
+        // Return the last entries as a JSON response
+        return ResponseEntity.ok(lastEntries); // Returns the JSON directly
     }
 
 }
