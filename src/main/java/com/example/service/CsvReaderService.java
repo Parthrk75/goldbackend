@@ -42,7 +42,14 @@ public class CsvReaderService {
 
             ObjectMapper mapper = new ObjectMapper();
             for (String line : lastLines) {
+                // Skip empty lines
+                if (line.trim().isEmpty()) {
+                    logger.warn("Skipping empty line.");
+                    continue;
+                }
+
                 String[] values = line.split(",");
+                // Skip malformed lines with fewer than 5 values
                 if (values.length < 5) {
                     logger.warn("Skipping invalid CSV line: {}", line);
                     continue;
@@ -55,6 +62,7 @@ public class CsvReaderService {
                 // Log the cleaned-up data for debugging purposes
                 logger.debug("Processed line - Date: {}, Close: {}", date, close);
 
+                // Create and populate JSON object with cleaned data
                 ObjectNode jsonObject = mapper.createObjectNode();
                 jsonObject.put("Date", date);
                 jsonObject.put("Close", close);

@@ -100,16 +100,29 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Reads the contents of the CSV file.
+     * Reads the contents of the CSV file using BufferedReader.
      *
-     * @return The contents of the CSV file as a List of Strings.
+     * @return The contents of the CSV file as a List of Strings, or an empty list if the file is not found or empty.
      */
     public List<String> readCsvFile() {
-        try {
-            return Files.readAllLines(CSV_FILE_PATH);
-        } catch (IOException e) {
-            logger.error("Error reading the CSV file: {}", e.getMessage(), e);
-            return List.of(); // Return empty list on error
+        if (Files.exists(CSV_FILE_PATH)) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(CSV_FILE_PATH.toFile()))) {
+                List<String> lines = reader.lines().toList();
+
+                if (lines.isEmpty()) {
+                    logger.warn("CSV file is empty.");
+                    return List.of(); // Return empty list if the file is empty
+                }
+
+                logger.info("CSV file read successfully.");
+                return lines; // Return lines from the CSV file
+            } catch (IOException e) {
+                logger.error("Error reading the CSV file: {}", e.getMessage(), e);
+                return List.of(); // Return empty list on error
+            }
+        } else {
+            logger.error("CSV file does not exist.");
+            return List.of(); // Return empty list if file doesn't exist
         }
     }
 }
