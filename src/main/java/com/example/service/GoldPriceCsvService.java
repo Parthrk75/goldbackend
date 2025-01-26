@@ -1,7 +1,6 @@
 package com.example.service;
 
-import org.apache.commons.csv.CSVFormat;
-import org.apache.commons.csv.CSVPrinter;
+import com.opencsv.CSVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -39,21 +38,20 @@ public class GoldPriceCsvService {
      */
     private void ensureCsvFileExists() {
         try {
+            logger.info("CSV file path: {}", CSV_FILE_PATH.toAbsolutePath());
+
             // Create directories if they don't exist
             if (Files.notExists(CSV_FILE_PATH.getParent())) {
-                Files.createDirectories(CSV_FILE_PATH.getParent()); // Create parent directories if needed
+                Files.createDirectories(CSV_FILE_PATH.getParent());
                 logger.info("Created directories: {}", CSV_FILE_PATH.getParent());
             }
 
             // Create the CSV file if it doesn't exist
             if (Files.notExists(CSV_FILE_PATH)) {
-                Files.createFile(CSV_FILE_PATH); // Create the CSV file
-                logger.info("CSV file created at: {}", CSV_FILE_PATH.toAbsolutePath());
-
-                // Optionally write headers to the file if it's newly created
-                try (BufferedWriter writer = new BufferedWriter(new FileWriter(CSV_FILE_PATH.toFile(), true));
-                     CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader("Date", "Open", "High", "Low", "Close"))) {
-                    logger.info("Headers written to new CSV file.");
+                try (CSVWriter writer = new CSVWriter(new FileWriter(CSV_FILE_PATH.toFile(), true))) {
+                    String[] headers = {"Date", "Open", "High", "Low", "Close"};
+                    writer.writeNext(headers);
+                    logger.info("CSV file created with headers at: {}", CSV_FILE_PATH.toAbsolutePath());
                 }
             } else {
                 logger.info("CSV file already exists at: {}", CSV_FILE_PATH.toAbsolutePath());
@@ -65,7 +63,7 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Appends the current gold price to the original CSV file.
+     * Appends the current gold price to the CSV file.
      *
      * @return A message indicating success or failure.
      */
@@ -88,10 +86,9 @@ public class GoldPriceCsvService {
             String formattedDate = now.format(OUTPUT_FORMAT);
 
             // Append data to the CSV file
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(CSV_FILE_PATH.toFile(), true));
-                 CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withRecordSeparator("\n"))) {
-
-                csvPrinter.printRecord(formattedDate, "0", "0", "0", String.valueOf(goldPrice));
+            try (CSVWriter writer = new CSVWriter(new FileWriter(CSV_FILE_PATH.toFile(), true))) {
+                String[] record = {formattedDate, "0", "0", "0", String.valueOf(goldPrice)};
+                writer.writeNext(record);
                 logger.info("Gold price appended successfully to the CSV file.");
             }
 
@@ -103,7 +100,7 @@ public class GoldPriceCsvService {
     }
 
     /**
-     * Reads the contents of the original CSV file.
+     * Reads the contents of the CSV file.
      *
      * @return The contents of the CSV file as a List of Strings.
      */
