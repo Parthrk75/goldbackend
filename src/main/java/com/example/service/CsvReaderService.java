@@ -16,6 +16,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Service to read and process data from a CSV file.
+ */
 @Service
 public class CsvReaderService {
 
@@ -32,37 +35,50 @@ public class CsvReaderService {
      */
     public List<ObjectNode> getLastNEntries(int numEntries) {
         ensureCsvFileExists(); // Ensure the file exists
-        List<ObjectNode> lastEntries = new ArrayList<>();
-        Path path = Paths.get(csvFilePath);
 
+        if (numEntries <= 0) {
+            logger.warn("Invalid number of entries requested: {}. Returning empty list.", numEntries);
+            return new ArrayList<>();
+        }
+
+        Path path = Paths.get(csvFilePath);
+        if (Files.notExists(path)) {
+            logger.error("CSV file does not exist: {}", path.toAbsolutePath());
+            return new ArrayList<>();
+        }
+
+        if (!Files.isReadable(path)) {
+            logger.error("CSV file is not readable: {}", path.toAbsolutePath());
+            return new ArrayList<>();
+        }
+
+        List<ObjectNode> lastEntries = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(new FileReader(path.toFile()))) {
-            List<String> allLines = reader.lines().skip(1).toList(); // Skip the header line
+            List<String> allLines = reader.lines().skip(1).toList(); // Skip header
+            if (allLines.isEmpty()) {
+                logger.warn("CSV file is empty or has only the header.");
+                return lastEntries;
+            }
+
             int startIdx = Math.max(0, allLines.size() - numEntries);
             List<String> lastLines = allLines.subList(startIdx, allLines.size());
 
             ObjectMapper mapper = new ObjectMapper();
             for (String line : lastLines) {
-                // Skip empty lines
                 if (line.trim().isEmpty()) {
                     logger.warn("Skipping empty line.");
                     continue;
                 }
 
                 String[] values = line.split(",");
-                // Skip malformed lines with fewer than 5 values
                 if (values.length < 5) {
                     logger.warn("Skipping invalid CSV line: {}", line);
                     continue;
                 }
 
-                // Clean up inconsistent quotation marks and trim spaces
                 String date = values[0].trim().replaceAll("^\"|\"$", "");
                 String close = values[4].trim().replaceAll("^\"|\"$", "");
 
-                // Log the cleaned-up data for debugging purposes
-                logger.debug("Processed line - Date: {}, Close: {}", date, close);
-
-                // Create and populate JSON object with cleaned data
                 ObjectNode jsonObject = mapper.createObjectNode();
                 jsonObject.put("Date", date);
                 jsonObject.put("Close", close);
@@ -85,12 +101,18 @@ public class CsvReaderService {
         Path path = Paths.get(csvFilePath);
         try {
             if (Files.notExists(path)) {
-                logger.error("CSV file does not exist: {}", path.toAbsolutePath());
+                // Create parent directories if they don't exist
+                Files.createDirectories(path.getParent());
+                logger.info("Directory created: {}", path.getParent());
+
+                // Optionally create an empty CSV file
+                Files.createFile(path);
+                logger.info("CSV file created: {}", path.toAbsolutePath());
             } else {
                 logger.info("CSV file found: {}", path.toAbsolutePath());
             }
-        } catch (Exception e) {
-            logger.error("Error checking CSV file existence: {}", e.getMessage(), e);
+        } catch (IOException e) {
+            logger.error("Error ensuring CSV file existence: {}", e.getMessage(), e);
         }
     }
 }
