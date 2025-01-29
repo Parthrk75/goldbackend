@@ -43,7 +43,10 @@ public class CsvReaderService {
         }
 
         Path path = Paths.get(csvFilePath);
+        String filepath = System.getProperty("user.dir");
+        System.out.println(filepath + "file path found");
         if (Files.notExists(path)) {
+
             logger.error("CSV file does not exist: {}", path.toAbsolutePath());
             return new ArrayList<>();
         }
