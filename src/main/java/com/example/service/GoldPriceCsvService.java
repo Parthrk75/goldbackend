@@ -38,18 +38,11 @@ public class GoldPriceCsvService {
         try {
             Path path = Paths.get(csvFilePath);
             if (Files.notExists(path.getParent())) {
-                Files.createDirectories(path.getParent());
-                logger.info("Created directories: {}", path.getParent());
+                logger.info("csv file not fond: ", path.getParent());
             }
 
-            if (Files.notExists(path)) {
-                try (CSVWriter writer = new CSVWriter(new FileWriter(path.toFile(), true))) {
-                    String[] headers = {"Date", "Open", "High", "Low", "Close"};
-                    writer.writeNext(headers);
-                    logger.info("CSV file created with headers at: {}", path.toAbsolutePath());
-                }
-            }
-        } catch (IOException e) {
+
+        } catch (Exception e) {
             logger.error("Failed to ensure CSV file existence: {}", e.getMessage(), e);
             throw new RuntimeException("Error ensuring CSV file existence", e);
         }
@@ -88,25 +81,5 @@ public class GoldPriceCsvService {
         }
     }
 
-    public List<String> readCsvFile() {
-        Path path = Paths.get(csvFilePath);
 
-        if (Files.exists(path)) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(path.toFile()))) {
-                List<String> lines = reader.lines().toList();
-                if (lines.isEmpty()) {
-                    logger.warn("CSV file is empty.");
-                    return List.of();
-                }
-                logger.info("CSV file read successfully.");
-                return lines;
-            } catch (IOException e) {
-                logger.error("Error reading the CSV file: {}", e.getMessage(), e);
-                return List.of();
-            }
-        } else {
-            logger.error("CSV file does not exist: {}", path.toAbsolutePath());
-            return List.of();
-        }
-    }
 }

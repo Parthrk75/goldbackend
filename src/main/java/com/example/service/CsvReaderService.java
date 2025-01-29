@@ -25,7 +25,7 @@ public class CsvReaderService {
     private static final Logger logger = LoggerFactory.getLogger(CsvReaderService.class);
 
     // Use the path from application.properties or default to a manual folder location
-    @Value("${csv.file.path:/opt/data/historical_gold_spot_prices.csv}")
+    @Value("${csv.file.path:/app/data/historical_gold_spot_prices.csv}")
     private String csvFilePath;
 
     /**
@@ -100,19 +100,17 @@ public class CsvReaderService {
      */
     private void ensureCsvFileExists() {
         Path path = Paths.get(csvFilePath);
+        String filepath = System.getProperty("user.dir");
+        System.out.println(filepath + "file path found");
         try {
             if (Files.notExists(path)) {
-                // Create parent directories if they don't exist
-                Files.createDirectories(path.getParent());
-                logger.info("Directory created: {}", path.getParent());
+                // Create parent directories if they don't exis
+                logger.info("CSV file not found");
 
-                // Optionally create an empty CSV file
-                Files.createFile(path);
-                logger.info("CSV file created: {}", path.toAbsolutePath());
             } else {
                 logger.info("CSV file found: {}", path.toAbsolutePath());
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             logger.error("Error ensuring CSV file existence: {}", e.getMessage(), e);
         }
     }
