@@ -25,7 +25,7 @@ public class CsvReaderService {
     private static final Logger logger = LoggerFactory.getLogger(CsvReaderService.class);
 
     // Use the path from application.properties or default to a manual folder location
-    @Value("${csv.file.path:/app/data/historical_gold_spot_prices.csv}")
+    @Value("${csv.file.path:./data/historical_gold_spot_prices.csv}")
     private String csvFilePath;
 
     /**

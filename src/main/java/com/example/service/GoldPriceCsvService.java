@@ -22,7 +22,7 @@ public class GoldPriceCsvService {
     private static final Logger logger = LoggerFactory.getLogger(GoldPriceCsvService.class);
     private static final DateTimeFormatter OUTPUT_FORMAT = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
 
-    @Value("${csv.file.path:data/historical_gold_spot_prices.csv}")
+    @Value("${csv.file.path:.data/historical_gold_spot_prices.csv}")
     private String csvFilePath;
 
     @Value("${gold.api.url}")
