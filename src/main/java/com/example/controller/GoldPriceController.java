@@ -46,6 +46,10 @@ public class GoldPriceController {
 
     @Autowired
     private CsvReaderService csvReaderService;
+
+    @Autowired
+    private GitHubService gitHubService;
+
     /**
      * API to append the latest gold price to a CSV file.
      * Endpoint: /append
@@ -179,4 +183,8 @@ public class GoldPriceController {
         return ResponseEntity.ok(lastEntries); // Returns the JSON directly
     }
 
+    @GetMapping("/prices")
+    public List<String[]> getGoldPrices() {
+        return gitHubService.getGoldPrices();
+    }
 }
