@@ -47,9 +47,6 @@ public class GoldPriceController {
     @Autowired
     private CsvReaderService csvReaderService;
 
-    @Autowired
-    private GitHubService gitHubService;
-
     /**
      * API to append the latest gold price to a CSV file.
      * Endpoint: /append
@@ -105,64 +102,6 @@ public class GoldPriceController {
     }
 
 
-    /**
-     * API to fetch gold price entries based on the specified number of days.
-     * Endpoint: /gold-price-entries
-     * @param days Number of days for which to fetch entries (default is 7 days).
-     * @return List of gold price entries.
-     */
-    @GetMapping("/gold-price-entries")
-    public ResponseEntity<?> getGoldPriceEntries(
-            @RequestParam(value = "days", required = false) Integer days,
-            @RequestParam(value = "startDate", required = false) String startDate,
-            @RequestParam(value = "endDate", required = false) String endDate) {
-
-        try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-
-            // If a custom date range is provided
-            if (startDate != null || endDate != null) {
-                if (startDate == null || endDate == null) {
-                    return ResponseEntity.badRequest()
-                            .body("Both 'startDate' and 'endDate' must be provided for a date range.");
-                }
-
-                LocalDateTime start;
-                LocalDateTime end;
-                try {
-                    start = LocalDate.parse(startDate, formatter).atStartOfDay();
-                    end = LocalDate.parse(endDate, formatter).atStartOfDay();
-                } catch (Exception e) {
-                    return ResponseEntity.badRequest()
-                            .body("Invalid date format. Please use 'yyyy-MM-dd'.");
-                }
-
-                if (end.isBefore(start)) {
-                    return ResponseEntity.badRequest().body("End date must be after start date.");
-                }
-
-                List<GoldCsvDTO> goldPrices = goldPriceService.getPricesByDateRange(start, end);
-                return goldPrices.isEmpty()
-                        ? ResponseEntity.status(HttpStatus.NOT_FOUND).body("No data found for the specified date range.")
-                        : ResponseEntity.ok(goldPrices);
-            }
-
-            // Fallback to 'days' parameter
-            if (days == null || days < 1) {
-                return ResponseEntity.badRequest().body("The 'days' parameter must be greater than 0.");
-            }
-
-            List<GoldCsvDTO> goldPrices = goldPriceService.getEntriesByDays(days);
-            return goldPrices.isEmpty()
-                    ? ResponseEntity.status(HttpStatus.NOT_FOUND).body("No data found for the last " + days + " days.")
-                    : ResponseEntity.ok(goldPrices);
-
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An error occurred while fetching the data: " + e.getMessage());
-        }
-    }
-
     @GetMapping("/last-entries")
     public ResponseEntity<?> getLastEntries(@RequestParam(defaultValue = "7") int numEntries) {
         // Check if the number of entries is positive
@@ -183,8 +122,63 @@ public class GoldPriceController {
         return ResponseEntity.ok(lastEntries); // Returns the JSON directly
     }
 
-    @GetMapping("/prices")
-    public List<String[]> getGoldPrices() {
-        return gitHubService.getGoldPrices();
-    }
+
+    /**
+     * API to fetch gold price entries based on the specified number of days.
+     * Endpoint: /gold-price-entries
+     * @param days Number of days for which to fetch entries (default is 7 days).
+     * @return List of gold price entries.
+     */
+//    @GetMapping("/gold-price-entries")
+//    public ResponseEntity<?> getGoldPriceEntries(
+//            @RequestParam(value = "days", required = false) Integer days,
+//            @RequestParam(value = "startDate", required = false) String startDate,
+//            @RequestParam(value = "endDate", required = false) String endDate) {
+//
+//        try {
+//            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+//
+//            // If a custom date range is provided
+//            if (startDate != null || endDate != null) {
+//                if (startDate == null || endDate == null) {
+//                    return ResponseEntity.badRequest()
+//                            .body("Both 'startDate' and 'endDate' must be provided for a date range.");
+//                }
+//
+//                LocalDateTime start;
+//                LocalDateTime end;
+//                try {
+//                    start = LocalDate.parse(startDate, formatter).atStartOfDay();
+//                    end = LocalDate.parse(endDate, formatter).atStartOfDay();
+//                } catch (Exception e) {
+//                    return ResponseEntity.badRequest()
+//                            .body("Invalid date format. Please use 'yyyy-MM-dd'.");
+//                }
+//
+//                if (end.isBefore(start)) {
+//                    return ResponseEntity.badRequest().body("End date must be after start date.");
+//                }
+//
+//                List<GoldCsvDTO> goldPrices = goldPriceService.getPricesByDateRange(start, end);
+//                return goldPrices.isEmpty()
+//                        ? ResponseEntity.status(HttpStatus.NOT_FOUND).body("No data found for the specified date range.")
+//                        : ResponseEntity.ok(goldPrices);
+//            }
+//
+//            // Fallback to 'days' parameter
+//            if (days == null || days < 1) {
+//                return ResponseEntity.badRequest().body("The 'days' parameter must be greater than 0.");
+//            }
+//
+//            List<GoldCsvDTO> goldPrices = goldPriceService.getEntriesByDays(days);
+//            return goldPrices.isEmpty()
+//                    ? ResponseEntity.status(HttpStatus.NOT_FOUND).body("No data found for the last " + days + " days.")
+//                    : ResponseEntity.ok(goldPrices);
+//
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//                    .body("An error occurred while fetching the data: " + e.getMessage());
+//        }
+//    }
+
 }

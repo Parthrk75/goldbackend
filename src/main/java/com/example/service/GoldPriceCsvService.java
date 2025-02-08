@@ -4,17 +4,17 @@ import com.opencsv.CSVWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.*;
+import java.io.FileWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 @Service
 public class GoldPriceCsvService {
@@ -38,10 +38,8 @@ public class GoldPriceCsvService {
         try {
             Path path = Paths.get(csvFilePath);
             if (Files.notExists(path.getParent())) {
-                logger.info("csv file not fond: ", path.getParent());
+                logger.info("CSV file not found: {}", path.getParent());
             }
-
-
         } catch (Exception e) {
             logger.error("Failed to ensure CSV file existence: {}", e.getMessage(), e);
             throw new RuntimeException("Error ensuring CSV file existence", e);
@@ -81,5 +79,10 @@ public class GoldPriceCsvService {
         }
     }
 
-
+    // Scheduled job to run at 10 PM New York Time every day
+    @Scheduled(cron = "0 0 22 * * ?", zone = "America/New_York")
+    public void scheduleGoldPriceCsvAppend() {
+        logger.info("Running scheduled task: appendGoldPriceToCsv()");
+        appendGoldPriceToCsv();
+    }
 }

@@ -13,7 +13,6 @@ com\example\dto\LiveGoldPriceDTO.class
 com\example\service\GoldPriceCsvService.class
 com\example\config\AppConfig.class
 com\example\service\GoldPriceService.class
-com\example\service\GitHubService.class
 com\example\controller\GoldPriceController.class
 com\example\service\GoldPriceDataService.class
 com\example\dto\GoldPriceDTO.class
